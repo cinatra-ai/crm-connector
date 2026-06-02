@@ -1,0 +1,33 @@
+{
+  "name": "@cinatra-ai/crm-connector",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "radix-ui": "^1.4.3",
+    "server-only": "0.0.1",
+    "tailwind-merge": "^3.5.0",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "@cinatra-ai/sdk-extensions": "*",
+    "@cinatra-ai/sdk-ui": "*"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.6"
+  },
+  "cinatra": {
+    "apiVersion": "cinatra.ai/v1",
+    "kind": "connector",
+    "dependencies": []
+  }
+}
