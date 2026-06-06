@@ -63,9 +63,12 @@ describe("CrmContactFinderWidget source contract", () => {
   });
 
   it("composes the canonical shadcn primitives — no raw <input>", () => {
-    expect(WIDGET_SRC).toMatch(/from "@\/components\/ui\/field"/);
-    expect(WIDGET_SRC).toMatch(/from "@\/components\/ui\/input-group"/);
-    expect(WIDGET_SRC).toMatch(/from "@\/components\/ui\/status-pill"/);
+    // Extensions cannot import the host `@/components/ui/*` aliases — they
+    // vendor the shadcn primitives locally (../components/ui/*) and take
+    // StatusPill from the published SDK surface (@cinatra-ai/sdk-ui/marketplace).
+    expect(WIDGET_SRC).toMatch(/from "\.\.\/components\/ui\/field"/);
+    expect(WIDGET_SRC).toMatch(/from "\.\.\/components\/ui\/input-group"/);
+    expect(WIDGET_SRC).toMatch(/from "@cinatra-ai\/sdk-ui\/marketplace"/);
     expect(WIDGET_SRC).toMatch(/<FieldGroup>/);
     expect(WIDGET_SRC).toMatch(/<Field>/);
     expect(WIDGET_SRC).toMatch(/<FieldLabel/);
