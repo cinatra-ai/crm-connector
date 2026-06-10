@@ -33,11 +33,22 @@ const REGISTRY_SRC = readFileSync(
   "src/widgets/index.ts",
   "utf-8",
 );
+// The manifest is a separate PURE-DATA module (no React in its graph) so the
+// host can load it from non-render server bundles; the registry re-exports it.
+const MANIFEST_SRC = readFileSync(
+  "src/widgets/manifest.ts",
+  "utf-8",
+);
 
 describe("CRM-connector widget registry source", () => {
-  it("exports the contact-finder manifest with the expected id", () => {
-    expect(REGISTRY_SRC).toMatch(/crmContactFinderManifest/);
-    expect(REGISTRY_SRC).toMatch(/id: "crm-connector"/);
+  it("exports the contact-finder manifest with the expected id (pure-data module, re-exported)", () => {
+    expect(MANIFEST_SRC).toMatch(/crmContactFinderManifest/);
+    expect(MANIFEST_SRC).toMatch(/id: "crm-connector"/);
+    // Pure data: the manifest module must not import React or the component.
+    expect(MANIFEST_SRC).not.toMatch(/from "\.\.\/chat-widgets/);
+    expect(MANIFEST_SRC).not.toMatch(/from "react"/);
+    // Compatibility: the registry keeps re-exporting it.
+    expect(REGISTRY_SRC).toMatch(/export \{ crmContactFinderManifest \} from "\.\/manifest"/);
   });
 
   it("exports crmConnectorWidgets containing the contact-finder widget", () => {
