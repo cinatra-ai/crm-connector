@@ -1,17 +1,17 @@
-import type { WidgetDefinition, WidgetManifest } from "@cinatra-ai/sdk-ui";
+import type { WidgetDefinition } from "@cinatra-ai/sdk-ui";
 import { CrmContactFinderWidget } from "../chat-widgets/crm-contact-finder";
 
-// Chat-widget manifest + registry for the CRM connector. Mounted by the
-// host app via `@cinatra-ai/crm-connector/widgets`. The single widget,
+// Chat-widget registry for the CRM connector. Loaded by the host app's RSC
+// chat mount via `@cinatra-ai/crm-connector/widgets`. The single widget,
 // `crm-connector.contact-finder`, performs a read-only lookup of an
 // existing CRM contact by email; CRM mutations (create/update) are not
 // available through the chat token (deny-by-default).
+//
+// The widget MANIFEST lives in `./manifest` (pure data, no React) so server
+// surfaces that only need metadata never import the component graph; it is
+// re-exported here for compatibility.
 
-export const crmContactFinderManifest: WidgetManifest = {
-  id: "crm-connector",
-  description:
-    "Use when the user wants to find an existing CRM contact by email.",
-};
+export { crmContactFinderManifest } from "./manifest";
 
 export const crmConnectorWidgets: WidgetDefinition[] = [
   {
