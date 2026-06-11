@@ -42,7 +42,7 @@ function makeObjectsProvider() {
     registerObjectType: vi.fn(),
     registerSyncAdapter: vi.fn(),
     addGraphitiEpisodeForObject: vi.fn(async () => ({ episodeUuid: "ep-1" })),
-    saveObject: vi.fn(async () => ({
+    saveObject: vi.fn(async (_req: unknown) => ({
       objectId: "obj-1",
       type: "@cinatra-ai/entity-accounts:account",
       isNew: true,
