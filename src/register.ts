@@ -21,6 +21,11 @@
 //     pointer rows through this impl. The impl owns the
 //     register-types-before-write ordering (the objects_save classifier
 //     fast-path) via the shared pointer-writer core.
+//   - `crm-list-reader`: the provider-agnostic LIST READ surface (cinatra#151
+//     Stage 4) — the host's agent-builder list picker resolves it at call
+//     time instead of value-importing this package's `crmFacade` export.
+//     Deliberately NARROW (least privilege): exactly the read member the host
+//     consumes today; mutation members stay off the capability surface.
 //
 // HOST-PEER HYGIENE (host-peer-value-import ban): this serverEntry graph
 // imports the SDK TYPE-ONLY and reaches only the dependency-light leaf
@@ -42,6 +47,7 @@ import {
   type CrmPointerPayload,
 } from "./integration/pointer-writer-core";
 import { makeTwentyToGraphitiAdapter } from "./sync-adapters/twenty-to-graphiti-core";
+import type { CrmList } from "./contract";
 
 const PACKAGE_NAME = "@cinatra-ai/crm-connector";
 
@@ -123,6 +129,36 @@ export function register(ctx: ExtensionHostContext): void {
             userId: payload.userId ?? null,
           }),
         );
+      },
+    },
+  });
+
+  // The provider-agnostic CRM LIST READ surface (cinatra#151 Stage 4): the
+  // host's agent-builder list picker resolves `crm-list-reader` from the
+  // capability registry instead of value-importing this package's `crmFacade`
+  // export. Deliberately NARROW (least privilege — the getNangoClient/
+  // shellTools precedent): exactly the read member the host consumes;
+  // mutation members are NOT exposed through the capability registry.
+  // Resolution policy mirrors facade.ts:resolveProvider (single-provider
+  // "twenty" today) via the host objects-integration service's lookup (a
+  // VALUE arriving through ctx.capabilities — SDK imports stay type-only);
+  // a missing provider throws descriptively — never a silent empty result
+  // (the HOST consumer owns its degraded-to-empty policy).
+  ctx.capabilities.registerProvider("crm-list-reader", {
+    packageName: PACKAGE_NAME,
+    impl: {
+      searchLists: async (input: {
+        query: string;
+        objectType?: "contact" | "account";
+      }): Promise<CrmList[]> => {
+        const provider = lookupProvider();
+        if (!provider) {
+          throw new Error(
+            `${PACKAGE_NAME}: no CRM provider registered (twenty inactive?). ` +
+              `Activate a CRM provider extension before using the crm-list-reader capability.`,
+          );
+        }
+        return provider.searchLists(input);
       },
     },
   });
