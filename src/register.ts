@@ -27,12 +27,23 @@
 //     Deliberately NARROW (least privilege): exactly the read member the host
 //     consumes today; mutation members stay off the capability surface.
 //
+// Transport-DI deps binding (cinatra#172 Stage H1): this entry ALSO binds the
+// connector's host-deps slot (`./deps`) by adapting the GRANTED
+// `ctx.authSession` + `ctx.jobs` ports — the find-contact "use server" action
+// and the MCP pointer-repair enqueue resolve them via `getCrmDeps()` from
+// separately-compiled bundles (server actions cannot close over ctx). Both
+// adapters are LAZY closures (no port is touched at registration time —
+// registration-only, no I/O), and the binding is PROBE-GATED: only a REAL
+// activation may (re)bind the process-global slot, because the hot-update
+// probe's `ctx.jobs` is a no-op that would silently drop pointer-repair
+// durability if captured (see the binding-site comment in register()).
+//
 // HOST-PEER HYGIENE (host-peer-value-import ban): this serverEntry graph
 // imports the SDK TYPE-ONLY and reaches only the dependency-light leaf
 // modules (object-type-definitions / pointer-writer-core /
-// twenty-to-graphiti-core). The objects provider and the CRM provider lookup
-// arrive as VALUES through the `@cinatra-ai/host:objects-integration` host
-// service in the capability registry — never via an SDK value import.
+// twenty-to-graphiti-core / deps). The objects provider and the CRM provider
+// lookup arrive as VALUES through the `@cinatra-ai/host:objects-integration`
+// host service in the capability registry — never via an SDK value import.
 
 import type {
   ExtensionHostContext,
@@ -40,6 +51,7 @@ import type {
   ObjectsProvider,
   CrmConnector,
 } from "@cinatra-ai/sdk-extensions";
+import { registerCrmConnector } from "./deps";
 import { CRM_OBJECT_TYPE_DEFINITIONS } from "./integration/object-type-definitions";
 import {
   buildPointerActorFromIds,
@@ -144,24 +156,53 @@ export function register(ctx: ExtensionHostContext): void {
   // VALUE arriving through ctx.capabilities — SDK imports stay type-only);
   // a missing provider throws descriptively — never a silent empty result
   // (the HOST consumer owns its degraded-to-empty policy).
+  const listReaderImpl = {
+    searchLists: async (input: {
+      query: string;
+      objectType?: "contact" | "account";
+    }): Promise<CrmList[]> => {
+      const provider = lookupProvider();
+      if (!provider) {
+        throw new Error(
+          `${PACKAGE_NAME}: no CRM provider registered (twenty inactive?). ` +
+            `Activate a CRM provider extension before using the crm-list-reader capability.`,
+        );
+      }
+      return provider.searchLists(input);
+    },
+  };
   ctx.capabilities.registerProvider("crm-list-reader", {
     packageName: PACKAGE_NAME,
-    impl: {
-      searchLists: async (input: {
-        query: string;
-        objectType?: "contact" | "account";
-      }): Promise<CrmList[]> => {
-        const provider = lookupProvider();
-        if (!provider) {
-          throw new Error(
-            `${PACKAGE_NAME}: no CRM provider registered (twenty inactive?). ` +
-              `Activate a CRM provider extension before using the crm-list-reader capability.`,
-          );
-        }
-        return provider.searchLists(input);
-      },
-    },
+    impl: listReaderImpl,
   });
+
+  // Host-deps slot binding (cinatra#172 Stage H1) — REAL activations only,
+  // never the hot-update PROBE. The probe contract (extension-host-context.ts
+  // createExtensionProbeHostContext): registration sinks are INERT recorders
+  // while capability READS stay REAL, and `ctx.jobs.enqueue` is a probe no-op.
+  // The deps slot is PROCESS-GLOBAL (`Symbol.for` on globalThis, shared with
+  // the live digest's separately-compiled callers), so binding it from a probe
+  // ctx would capture the probe's no-op jobs port — the pointer-repair enqueue
+  // would silently drop durability, and an aborted probe would leave the
+  // poisoned binding behind (the old digest's register is not re-run on probe
+  // rejection). Detection rides the documented contract itself: the provider
+  // instance registered ABOVE is visible to `resolveProviders` iff the
+  // registration sink was the REAL registry (the registry stores providers
+  // by reference; the probe recorder swallows them) — so bind iff OUR
+  // `listReaderImpl` instance is live. A probe therefore leaves any existing
+  // live binding untouched, and the new digest's REAL activation (after the
+  // probe passes and the old digest is torn down) re-binds fresh resolvers.
+  // The adapter closures still defer every port access to call time
+  // (registration-only: no `ctx.authSession` / `ctx.jobs` read happens here).
+  const liveRegistered = ctx.capabilities
+    .resolveProviders("crm-list-reader")
+    .some((provider) => provider.impl === listReaderImpl);
+  if (liveRegistered) {
+    registerCrmConnector({
+      getActor: () => ctx.authSession.getActor(),
+      enqueueJob: (jobName, payload, opts) => ctx.jobs.enqueue(jobName, payload, opts),
+    });
+  }
 
   // DELIBERATELY no eager registration calls here: register(ctx) is
   // registration-only (capability providers in, nothing else touched).
@@ -170,7 +211,8 @@ export function register(ctx: ExtensionHostContext): void {
   //   2. the hot-update PROBE runs register(ctx) with inert registration
   //      sinks but REAL capability reads — an eager
   //      registerObjectTypes()/ensureSyncRegistrations() call would mutate
-  //      the live object registries mid-probe;
+  //      the live object registries mid-probe (and the deps-slot binding
+  //      above is probe-gated for the same live-state reason);
   //   3. every consumer self-ensures: registerAllObjectTypes() runs the
   //      registrar loop before relying on the types, and the
   //      graphiti-projection-repair cycle runs the sync bootstrap ahead of

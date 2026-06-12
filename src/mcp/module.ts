@@ -15,8 +15,20 @@ import { registerCrmObjectSyncAdapters } from "../sync-adapters/twenty-to-graphi
 
 import type { ExtensionMcpToolServer } from "@cinatra-ai/sdk-extensions";
 import { requireCrmRequestActorResolver, requireObjectsProvider } from "@cinatra-ai/sdk-extensions";
-import { BACKGROUND_JOB_NAMES, enqueueBackgroundJob } from "@/lib/background-jobs";
+import { getCrmDeps } from "../deps";
 import { z } from "zod";
+
+// FROZEN queue-name contract (cinatra#172 Stage H1). The repair enqueue goes
+// through the host `jobs` port (`getCrmDeps().enqueueJob`, bound from
+// `ctx.jobs.enqueue` by register(ctx)) instead of a `@/lib/background-jobs`
+// value import. The job NAME is a stable serialization id owned by the host's
+// `BACKGROUND_JOB_NAMES.TWENTY_POINTER_REPAIR` ("twenty-pointer-repair") —
+// the host's static worker dispatcher remains the single authority (an
+// unrecognised name is rejected at dispatch, not at enqueue). Declared ONCE
+// here (never scattered literals); changing it is a cross-repo contract
+// break, same discipline as the gmail connector's "email-system-development"
+// config key.
+const TWENTY_POINTER_REPAIR_JOB = "twenty-pointer-repair";
 
 // D8 — pointer-write-back. After every crm_account/contact create+update the
 // handlers persist a minimal pointer row in cinatra.objects via the in-process
@@ -159,8 +171,8 @@ async function enqueuePointerRepairOrLog(payload: {
     `[crm-connector] ${payload.type} pointer-write failed (external_id=${payload.externalId}, orgId=${orgId ?? "null"}): ${causeMessage}; enqueueing TWENTY_POINTER_REPAIR\n`,
   );
   try {
-    await enqueueBackgroundJob(
-      BACKGROUND_JOB_NAMES.TWENTY_POINTER_REPAIR,
+    await getCrmDeps().enqueueJob(
+      TWENTY_POINTER_REPAIR_JOB,
       {
         type: payload.type,
         externalId: payload.externalId,

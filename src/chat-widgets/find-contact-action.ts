@@ -2,7 +2,7 @@
 
 import "server-only";
 
-import { requireAuthSession } from "@/lib/auth-session";
+import { getCrmDeps } from "../deps";
 import { crmFacade } from "../facade";
 import type { CrmContact } from "../contract";
 
@@ -12,10 +12,16 @@ import type { CrmContact } from "../contract";
 // provider-agnostic CRM facade (`crm_contact_find_by_email`) and returns
 // the resolved row OR `null`.
 //
-// Deterministic — no chat / no LLM. The first line is an explicit
-// `requireAuthSession()` gate: the Twenty provider resolves the
-// workspace row + bearer server-side, so an unauthenticated request
-// would otherwise hit Twenty with the cinatra-app-side credentials.
+// Deterministic — no chat / no LLM. The first step is an explicit actor
+// gate: `getCrmDeps().getActor()` (the host `authSession` port, bound by
+// this connector's register(ctx) — a "use server" action cannot close over
+// ctx, hence the deps slot; cinatra#172 Stage H1). `getActor()` is
+// non-throwing and resolves `null` for a genuinely unauthenticated caller
+// across cookie / MCP / worker / A2A contexts; the null-check maps to the
+// same typed error envelope the previous cookie-only `requireAuthSession()`
+// gate produced. The gate matters: the Twenty provider resolves the
+// workspace row + bearer server-side, so an unauthenticated request would
+// otherwise hit Twenty with the cinatra-app-side credentials.
 // Returns a small projection of the CrmContact shape so the client
 // island can render result chrome without server-only types leaking
 // client-side.
@@ -41,9 +47,8 @@ function isValidEmail(email: string): boolean {
 export async function findContactByEmailAction(
   formData: FormData,
 ): Promise<ContactFinderResult> {
-  try {
-    await requireAuthSession();
-  } catch {
+  const actor = await getCrmDeps().getActor();
+  if (!actor) {
     return { status: "error", message: "Not authenticated." };
   }
 
