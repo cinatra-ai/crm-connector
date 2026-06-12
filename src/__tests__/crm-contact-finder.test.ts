@@ -129,12 +129,20 @@ describe("findContactByEmailAction source contract", () => {
     expect(ACTION_SRC).toMatch(/import "server-only"/);
   });
 
-  it("calls requireAuthSession BEFORE the CRM facade lookup", () => {
-    expect(ACTION_SRC).toMatch(/from "@\/lib\/auth-session"/);
-    expect(ACTION_SRC).toMatch(/await requireAuthSession\(\)/);
-    // Order check: the auth gate's `await` MUST appear before any
+  it("gates on the deps-slot actor (getCrmDeps().getActor() null-check) BEFORE the CRM facade lookup", () => {
+    // cinatra#172 Stage H1: the cookie-only `requireAuthSession()` host
+    // import is replaced by the host `authSession` port via the connector's
+    // deps slot — a "use server" action cannot close over ctx, so the gate
+    // resolves `getCrmDeps()` from the globalThis slot bound by register(ctx).
+    expect(ACTION_SRC).toMatch(/from "\.\.\/deps"/);
+    expect(ACTION_SRC).toMatch(/await getCrmDeps\(\)\.getActor\(\)/);
+    // Negative: the host-internal auth-session import must NOT come back
+    // (extension-import-ban hostInternal floor).
+    expect(ACTION_SRC).not.toMatch(/from "@\/lib\/auth-session"/);
+    expect(ACTION_SRC).not.toMatch(/await requireAuthSession\(\)/);
+    // Order check: the actor gate's `await` MUST appear before any
     // `crmFacade.contact.findByEmail` call in the action body.
-    const gateIdx = ACTION_SRC.indexOf("await requireAuthSession()");
+    const gateIdx = ACTION_SRC.indexOf("await getCrmDeps().getActor()");
     const lookupIdx = ACTION_SRC.indexOf("crmFacade.contact.findByEmail");
     expect(gateIdx).toBeGreaterThan(-1);
     expect(lookupIdx).toBeGreaterThan(gateIdx);

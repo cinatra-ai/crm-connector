@@ -12,6 +12,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./register": "./src/register.ts",
+    "./deps": "./src/deps.ts",
     "./integration/register-object-types": "./src/integration/register-object-types.ts",
     "./mcp-module": "./src/mcp/module.ts",
     "./widgets": "./src/widgets/index.ts",
@@ -56,6 +57,8 @@
     "dependencies": [],
     "serverEntry": "./register",
     "requestedHostPorts": [
+      "authSession",
+      "jobs",
       "capabilities"
     ]
   }

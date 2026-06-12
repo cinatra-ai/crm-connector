@@ -26,13 +26,13 @@ const { objectsSaveMock, enqueueMock } = vi.hoisted(() => ({
 // instead of `createObjectsPrimitiveHandlers().objects_save(...)` — the provider's
 // `saveObject` is stubbed with `objectsSaveMock` via `setObjectsProvider` in
 // `beforeEach` (no `@cinatra-ai/objects` import remains to mock).
-
-vi.mock("@/lib/background-jobs", () => ({
-  BACKGROUND_JOB_NAMES: {
-    TWENTY_POINTER_REPAIR: "twenty-pointer-repair",
-  },
-  enqueueBackgroundJob: enqueueMock,
-}));
+//
+// The repair enqueue goes through the connector's host-deps slot
+// (`getCrmDeps().enqueueJob`, bound from `ctx.jobs.enqueue` by register(ctx)
+// — cinatra#172 Stage H1), so the tests stub the deps slot via
+// `registerCrmConnector({ enqueueJob: enqueueMock, … })` in `beforeEach`
+// instead of `vi.mock("@/lib/background-jobs")`. The asserted job name stays
+// the frozen "twenty-pointer-repair" queue-name contract.
 
 // The CRM request-actor resolver is host-injected via the SDK DI slot.
 // module.ts reads the current request identity through
@@ -56,10 +56,19 @@ import {
   writeContactPointer,
   writePointerByType,
 } from "../mcp/module";
+import { registerCrmConnector, _resetCrmDepsForTests } from "../deps";
 
 beforeEach(() => {
   objectsSaveMock.mockReset();
   enqueueMock.mockReset();
+  // Bind the connector host-deps slot — `enqueueJob` captures the repair
+  // enqueue; `getActor` is unused on these write paths (the pointer actor
+  // comes from the CRM request-actor resolver below).
+  _resetCrmDepsForTests();
+  registerCrmConnector({
+    getActor: async () => null,
+    enqueueJob: enqueueMock,
+  });
   // Default: simulate an inline MCP handler with orgId/userId populated.
   mcpStoreMock.mockReset();
   mcpStoreMock.mockReturnValue({ orgId: "org-1", userId: "user-7" });
