@@ -1,8 +1,9 @@
 // serverEntry `register(ctx)` — capability registration tests.
 //
 // The lazy/guarded host-access cutover: the host resolves
-// `object-type-registrar` / `crm-sync-bootstrap` / `crm-pointer-writer`
-// capability providers instead of value-importing this package. register(ctx)
+// `object-type-registrar` / `crm-sync-bootstrap` / `crm-pointer-writer` /
+// `crm-list-reader` capability providers instead of value-importing this
+// package. register(ctx)
 // must be REGISTRATION-ONLY (no I/O — required-extension-activation arms a
 // prod-boot throw on activation failure), take every host value through the
 // `@cinatra-ai/host:objects-integration` service (host-peer-value-import ban:
@@ -58,7 +59,7 @@ beforeEach(() => {
 });
 
 describe("register(ctx)", () => {
-  it("registers the three capabilities and is REGISTRATION-ONLY (no registry mutation, no I/O at activation — probe-safe)", () => {
+  it("registers the four capabilities and is REGISTRATION-ONLY (no registry mutation, no I/O at activation — probe-safe)", () => {
     const provider = makeObjectsProvider();
     const { ctx, registered } = makeCtx({
       getObjectsProvider: () => provider,
@@ -67,6 +68,7 @@ describe("register(ctx)", () => {
     register(ctx);
 
     expect([...registered.keys()].sort()).toEqual([
+      "crm-list-reader",
       "crm-pointer-writer",
       "crm-sync-bootstrap",
       "object-type-registrar",
@@ -115,10 +117,54 @@ describe("register(ctx)", () => {
     expect(() => register(ctx)).not.toThrow();
     // Capabilities still registered (they degrade per call); eager calls no-op.
     expect([...registered.keys()].sort()).toEqual([
+      "crm-list-reader",
       "crm-pointer-writer",
       "crm-sync-bootstrap",
       "object-type-registrar",
     ]);
+  });
+
+  it("the crm-list-reader impl delegates searchLists to the host-resolved provider at call time", async () => {
+    const provider = makeObjectsProvider();
+    const searchLists = vi.fn(async () => [
+      { id: "v1", name: "Contacts A", objectType: "contact" },
+    ]);
+    const { ctx, registered } = makeCtx({
+      getObjectsProvider: () => provider,
+      lookupCrmProvider: (id: string) => (id === "twenty" ? { searchLists } : null),
+    });
+    register(ctx);
+    const reader = registered.get("crm-list-reader")?.[0]?.impl as {
+      searchLists(input: { query: string; objectType?: "contact" | "account" }): Promise<unknown[]>;
+    };
+    const lists = await reader.searchLists({ query: "", objectType: "contact" });
+    expect(searchLists).toHaveBeenCalledWith({ query: "", objectType: "contact" });
+    expect(lists).toEqual([{ id: "v1", name: "Contacts A", objectType: "contact" }]);
+  });
+
+  it("the crm-list-reader impl FAILS LOUD when no CRM provider is registered (the host consumer owns degraded-to-empty)", async () => {
+    const { ctx, registered } = makeCtx({
+      getObjectsProvider: () => null,
+      lookupCrmProvider: () => null,
+    });
+    register(ctx);
+    const reader = registered.get("crm-list-reader")?.[0]?.impl as {
+      searchLists(input: { query: string }): Promise<unknown[]>;
+    };
+    await expect(reader.searchLists({ query: "" })).rejects.toThrow(
+      /no CRM provider registered/,
+    );
+  });
+
+  it("the crm-list-reader surface exposes ONLY the read member (least privilege — no mutation members)", () => {
+    const provider = makeObjectsProvider();
+    const { ctx, registered } = makeCtx({
+      getObjectsProvider: () => provider,
+      lookupCrmProvider: () => null,
+    });
+    register(ctx);
+    const impl = registered.get("crm-list-reader")?.[0]?.impl as Record<string, unknown>;
+    expect(Object.keys(impl).sort()).toEqual(["searchLists"]);
   });
 
   it("the pointer-writer impl registers types before saving and mints the synthetic member actor", async () => {
