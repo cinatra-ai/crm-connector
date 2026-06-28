@@ -1,6 +1,6 @@
 # Trim CI/internal noise from `git archive` output (GitHub Release source
 # archives). Use the `/**` form: a bare `dir/` pattern does not recurse
-# reliably for export-ignore. Refs cinatra-ai/cinatra-engineering#56.
+# reliably for export-ignore (per the org release-artifact standard).
 .github/** export-ignore
 tests/** export-ignore
 .gitattributes export-ignore
