@@ -1,7 +1,7 @@
 name: ui-design-system-gate
 
 # Thin caller for the org-wide shadcn design-system gate
-# (cinatra-ai/cinatra-engineering#62 — rollout to the applicable-repo
+# (org-wide rollout to the applicable-repo
 # inventory). This repo's eslint.config.mjs spreads the preset vendored
 # byte-identically at tools/ui-design-system.flat.mjs from the SAME ci
 # commit this caller pins, so the workflow and the config it runs are
@@ -11,7 +11,7 @@ name: ui-design-system-gate
 # debt to filter around, unlike the cinatra monorepo caller), so the gate
 # runs plain ESLint and gates on its exit code: any boundary error or
 # fatal parse failure fails. The raw-JSX block (Block B) has been ramped
-# to error (cinatra-ai/engineering#68) now that this repo is clean, so a
+# to error (now that this repo is clean), so a
 # new raw <button>/<input>/<select>/<textarea>/<a> fails the gate.
 # --no-inline-config keeps the
 # "exemptions are files-glob carve-outs, never inline eslint-disable"
