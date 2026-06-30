@@ -60,6 +60,7 @@
       "authSession",
       "jobs",
       "capabilities"
-    ]
+    ],
+    "sdkAbiRange": "^2"
   }
 }
