@@ -66,6 +66,7 @@
       "jobs",
       "capabilities"
     ],
-    "sdkAbiRange": "^2"
+    "sdkAbiRange": "^2",
+    "consumes": []
   }
 }
