@@ -5,7 +5,7 @@ project's merged pull request and release-tag history.
 
 ## v0.1.1 — 2026-06-13
 
-- refactor: adopt ctx.authSession + ctx.jobs host ports via a deps slot (cinatra#172 Stage H1) (#16)
+- refactor: adopt ctx.authSession + ctx.jobs host ports via a deps slot (#16)
 - ci(release): grant contents: write + pin reusable workflow to .github HEAD (#17)
 - ci: repin reusable release workflow (immutable-safe decoration + corrected build-input provisioning) (#18)
 - release: crm-connector v0.1.1 (republish on corrected serverEntry build pipeline) (#19)
@@ -28,7 +28,7 @@ project's merged pull request and release-tag history.
 - ci: adopt the org ui-design-system gate (#10)
 - serverEntry register(ctx): expose the CRM integration surfaces as capabilities (cinatra#7 P721) (#11)
 - fix(tests): type the saveObject mock parameter (host tsgo strictness) (#12)
-- feat: register the crm-list-reader capability surface (cinatra#151 Stage 4) (#13)
+- feat: register the crm-list-reader capability surface (#13)
 - chore: Configure Renovate (#14)
 - ci: add truthful-attribution-gate in WARN (advisory) mode (#20)
 - ci: adopt the reusable extension->host IoC conformance gate (org-wide rollout) (#21)
