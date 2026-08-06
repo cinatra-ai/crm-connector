@@ -60,6 +60,7 @@
       "name": "Cinatra"
     },
     "displayName": "CRM",
+    "logo": "./cinatra/logo.svg",
     "dependencies": [],
     "serverEntry": "./register",
     "requestedHostPorts": [
