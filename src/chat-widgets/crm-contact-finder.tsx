@@ -8,12 +8,12 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
-} from "../components/ui/field";
+} from "@cinatra-ai/design-primitives";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-} from "../components/ui/input-group";
+} from "@cinatra-ai/design-primitives";
 import { StatusPill, type StatusPillStatus } from "@cinatra-ai/sdk-ui/marketplace";
 import {
   findContactByEmailAction,
